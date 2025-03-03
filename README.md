@@ -12,7 +12,8 @@
 运行脚本前，需要安装以下依赖：
 
 ```bash
-npm install
+pip install -r requirements.txt
+
 ```
 文件准备
 private_keys.txt：
