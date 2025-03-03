@@ -21,10 +21,10 @@ pip install -r requirements.txt
 
 wallets.txt 与 priv.txt（成对使用）：
 
-wallets.txt：每行填写一个钱包地址。
-priv.txt：每行填写与钱包地址对应的私钥。
-注意： 两个文件的行数必须一致。
-或者使用单个文件 private_keys.txt：
+- wallets.txt：每行填写一个钱包地址。
+- priv.txt：每行填写与钱包地址对应的私钥。
+- 注意： 两个文件的行数必须一致。
+- 或者使用单个文件 private_keys.txt：
 
 每行填写一个私钥，脚本将自动从私钥生成对应的钱包地址。
 格式：每行一个以太坊私钥（64 个十六进制字符，带 0x 前缀）。
