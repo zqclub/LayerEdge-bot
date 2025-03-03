@@ -2,13 +2,14 @@
   "type": "module",
   "name": "mint-nft-layeredge",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "bot.js",
   "scripts": {
+    "start": "node bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Your Name",
+  "license": "MIT",
+  "description": "批量铸造 NFT 的 Node.js 脚本，支持 Base 网络",
   "dependencies": {
     "chalk": "^5.4.1",
     "ethers": "^6.13.5"
