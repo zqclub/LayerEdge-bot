@@ -14,7 +14,7 @@ RPC_URL = "https://mainnet.base.org"  # 可改为 https://1rpc.io/base
 MIN_DELAY = 5  # 账户间最小延迟（秒）
 MAX_DELAY = 10  # 账户间最大延迟（秒）
 OG_VALUE = "0.000909"  # OG NFT 费用（ETH）
-ABI_PATH = "data/abis/free_mint_abi.json"
+ABI_PATH = "free_mint_abi.json"
 
 w3 = AsyncWeb3(AsyncHTTPProvider(RPC_URL))
 
