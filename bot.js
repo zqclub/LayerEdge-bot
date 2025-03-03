@@ -1,102 +1,147 @@
-import fs from "fs";
-import { ethers } from "ethers";
-import chalk from "chalk";
+import asyncio
+from random import randint
+import json
+import os
+from web3 import AsyncWeb3, AsyncHTTPProvider
+from colorama import Fore, init
 
-function getCurrentTime() {
-  const now = new Date(new Date().getTime() + 7 * 3600 * 1000);
-  const hh = now.getUTCHours().toString().padStart(2, "0");
-  const mm = now.getUTCMinutes().toString().padStart(2, "0");
-  const ss = now.getUTCSeconds().toString().padStart(2, "0");
-  const dd = now.getUTCDate().toString().padStart(2, "0");
-  const mth = (now.getUTCMonth() + 1).toString().padStart(2, "0");
-  const yyyy = now.getUTCFullYear();
-  return chalk.blue(`[${hh}:${mm}:${ss} ${dd}/${mth}/${yyyy}]`);
-}
+# 初始化颜色支持
+init()
 
-const ABI = [
-  {
-    "inputs": [
-      { "internalType": "uint256", "name": "_tier", "type": "uint256" },
-      { "internalType": "address", "name": "_to", "type": "address" }
-    ],
-    "name": "mint",
-    "outputs": [
-      { "internalType": "uint256", "name": "", "type": "uint256" }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  }
-];
+# 配置
+CONTRACT_ADDRESS = "0xb06C68C8f9DE60107eAbda0D7567743967113360"
+RPC_URL = "https://mainnet.base.org"  # 可改为 https://1rpc.io/base
+MIN_DELAY = 5  # 账户间最小延迟（秒）
+MAX_DELAY = 10  # 账户间最大延迟（秒）
+OG_VALUE = "0.000909"  # OG NFT 费用（ETH）
+ABI_PATH = "data/abis/free_mint_abi.json"
 
-const CONTRACT_ADDRESS = "0xb06C68C8f9DE60107eAbda0D7567743967113360";
-const TIER = 1;
-const provider = new ethers.JsonRpcProvider("https://1rpc.io/base");
+w3 = AsyncWeb3(AsyncHTTPProvider(RPC_URL))
 
-async function main() {
-  const walletLines = fs.readFileSync("wallets.txt", "utf-8")
-    .split("\n")
-    .map(line => line.trim())
-    .filter(Boolean);
-  const privLines = fs.readFileSync("priv.txt", "utf-8")
-    .split("\n")
-    .map(line => line.trim())
-    .filter(Boolean);
+# 日志工具
+class Logger:
+    @staticmethod
+    def info(msg): print(f"{Fore.CYAN}[INFO] {msg}{Fore.RESET}")
+    @staticmethod
+    def success(msg): print(f"{Fore.GREEN}[SUCCESS] {msg}{Fore.RESET}")
+    @staticmethod
+    def error(msg): print(f"{Fore.RED}[ERROR] {msg}{Fore.RESET}")
 
-  if (walletLines.length !== privLines.length) {
-    console.error(getCurrentTime(), chalk.red("wallets.txt 和 priv.txt 的行数不匹配，退出..."));
-    process.exit(1);
-  }
+# 文件工具
+def read_wallets():
+    if os.path.exists("wallets.txt") and os.path.exists("priv.txt"):
+        with open("wallets.txt", "r") as f:
+            wallets = [line.strip() for line in f if line.strip()]
+        with open("priv.txt", "r") as f:
+            privs = [line.strip() for line in f if line.strip()]
+        if len(wallets) != len(privs):
+            raise ValueError("wallets.txt 和 priv.txt 行数不匹配")
+        return [{"address": w, "private_key": p} for w, p in zip(wallets, privs)]
+    elif os.path.exists("private_keys.txt"):
+        with open("private_keys.txt", "r") as f:
+            return [{"address": None, "private_key": line.strip()} for line in f if line.strip()]
+    else:
+        raise FileNotFoundError("未找到 wallets.txt/priv.txt 或 private_keys.txt")
 
-  for (let i = 0; i < walletLines.length; i++) {
-    const walletAddress = walletLines[i];
-    const privateKey = privLines[i];
-    try {
-      console.log(getCurrentTime(), chalk.yellow(`[${i + 1}] 开始为地址铸造: ${walletAddress}`));
-      const signer = new ethers.Wallet(privateKey, provider);
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-      const txData = contract.interface.encodeFunctionData("mint", [TIER, walletAddress]);
-      const txForEstimate = {
-        from: signer.address,
-        to: CONTRACT_ADDRESS,
-        data: txData
-      };
-      const estimatedGas = await provider.estimateGas(txForEstimate);
-      const gasLimit = (estimatedGas * 110n) / 100n;
-      // console.log(getCurrentTime(), chalk.cyan(`估算燃气: ${estimatedGas.toString()}, 使用燃气限制: ${gasLimit.toString()}`));
-      const tx = await signer.sendTransaction({
-        to: CONTRACT_ADDRESS,
-        data: txData,
-        gasLimit: gasLimit
-      });
-      console.log(getCurrentTime(), chalk.cyan(`交易已发送，交易哈希 = ${tx.hash}。等待确认...`));
+def write_success(wallet, tx_hash):
+    with open("success.txt", "a") as f:
+        f.write(f"{wallet['address']}:{wallet['private_key']}:{tx_hash}\n")
 
-      let receipt;
-      try {
-        receipt = await tx.wait();
-      } catch (e) {
-        if (e.message && e.message.includes("cannot unmarshal string into Go struct field Response.error")) {
-          console.log(getCurrentTime(), chalk.green(`交易确认出错已忽略。假设交易成功，交易哈希: ${tx.hash}`));
-          receipt = { status: 1, blockNumber: "未知" };
-        } else {
-          throw e;
-        }
-      }
+def write_failure(wallet):
+    with open("failed.txt", "a") as f:
+        f.write(f"{wallet['address'] or 'unknown'}:{wallet['private_key']}\n")
 
-      if (receipt.status === 1) {
-        console.log(getCurrentTime(), chalk.green(`铸造成功！区块: ${receipt.blockNumber}, 交易哈希: ${tx.hash}`));
-        const successLine = `${walletAddress}:${privateKey}:${tx.hash}\n`;
-        fs.appendFileSync("success.txt", successLine, { encoding: "utf-8" });
-      } else {
-        console.log(getCurrentTime(), chalk.red(`交易失败 (状态 = 0)，交易哈希: ${tx.hash}`));
-      }
-    } catch (err) {
-      console.error(getCurrentTime(), chalk.red(`[${i + 1}] 为 ${walletAddress} 铸造时出错:`), err);
+# 读取 ABI
+def load_abi(path):
+    with open(path, "r") as f:
+        return json.load(f)
+
+# 构造交易
+async def build_transaction(wallet, tier, value=0):
+    wallet_address = w3.to_checksum_address(wallet["address"] or w3.eth.account.from_key(wallet["private_key"]).address)
+    contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=load_abi(ABI_PATH))
+    
+    last_block = await w3.eth.get_block("latest")
+    base_fee = int(last_block["baseFeePerGas"] * 1.3)
+    max_priority_fee = await w3.eth.max_priority_fee
+    gas_estimate = await contract.functions.mint(tier, wallet_address).estimate_gas({"from": wallet_address})
+    gas_limit = int(gas_estimate * 1.1)
+
+    return {
+        "chainId": await w3.eth.chain_id,
+        "from": wallet_address,
+        "to": CONTRACT_ADDRESS,
+        "maxPriorityFeePerGas": max_priority_fee,
+        "maxFeePerGas": base_fee + max_priority_fee,
+        "gas": gas_limit,
+        "nonce": await w3.eth.get_transaction_count(wallet_address),
+        "data": contract.encodeABI(fn_name="mint", args=[tier, wallet_address]),
+        "value": w3.to_wei(value, "ether"),
     }
-    console.log(getCurrentTime(), chalk.magenta("============================================\n"));
-  }
-  console.log(getCurrentTime(), chalk.green("铸造过程已完成！"));
-}
 
-main().catch(err => {
-  console.error(getCurrentTime(), chalk.red("脚本运行出错:"), err);
-});
+# 发送交易
+async def send_transaction(txn, wallet, nft_type):
+    try:
+        signed_txn = w3.eth.account.sign_transaction(txn, wallet["private_key"])
+        tx_hash = await w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        receipt = await w3.eth.wait_for_transaction_receipt(tx_hash)
+        if receipt["status"] == 1:
+            Logger.success(f"{wallet['address']} | 铸造 {nft_type} | 交易哈希: {tx_hash.hex()}")
+            write_success(wallet, tx_hash.hex())
+        else:
+            Logger.error(f"{wallet['address']} | 铸造 {nft_type} | 交易失败 (状态=0)")
+            write_failure(wallet)
+    except Exception as e:
+        Logger.error(f"{wallet['address']} | 铸造 {nft_type} | 错误: {str(e)}")
+        write_failure(wallet)
+
+# 铸造 NFT
+async def mint_nft(wallet, mint_free, mint_og):
+    if mint_free:
+        Logger.info(f"{wallet['address']} | 开始铸造免费通行证")
+        txn = await build_transaction(wallet, 1)
+        await send_transaction(txn, wallet, "免费通行证")
+        await asyncio.sleep(0.1)
+
+    if mint_og:
+        if mint_free:
+            await asyncio.sleep(randint(60, 90))  # FREE 和 OG 间延迟
+        Logger.info(f"{wallet['address']} | 开始铸造 OG 通行证")
+        txn = await build_transaction(wallet, 2, OG_VALUE)
+        await send_transaction(txn, wallet, "OG 通行证")
+
+# 获取用户选择
+def get_user_choice():
+    print("请选择要铸造的 NFT 类型：")
+    print("1. 免费通行证 (Free Pass)")
+    print("2. OG 通行证 (OG Pass, 费用: 0.000909 ETH)")
+    print("3. 两者都铸造")
+    while True:
+        choice = input("输入选项 (1/2/3): ").strip()
+        if choice == "1":
+            return True, False  # 只铸造免费
+        elif choice == "2":
+            return False, True  # 只铸造 OG
+        elif choice == "3":
+            return True, True   # 两者都铸造
+        else:
+            print("无效选项，请输入 1、2 或 3")
+
+# 主函数
+async def main():
+    # 获取用户选择
+    mint_free, mint_og = get_user_choice()
+    Logger.info(f"选择铸造: 免费={'是' if mint_free else '否'}, OG={'是' if mint_og else '否'}")
+
+    wallets = read_wallets()
+    tasks = []
+    for wallet in wallets:
+        task = asyncio.create_task(mint_nft(wallet, mint_free, mint_og))
+        tasks.append(task)
+        await asyncio.sleep(randint(MIN_DELAY, MAX_DELAY))
+
+    await asyncio.gather(*tasks)
+    Logger.success("所有账户处理完成！")
+
+if __name__ == "__main__":
+    asyncio.run(main())
