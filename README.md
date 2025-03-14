@@ -1,3 +1,11 @@
+LayerEdge Node cli 版本 脚本功能
+- 自动签到
+- 自动任务
+- 自动验证 twitter
+- 支持代理/无代理
+- 多线程，多个帐户
+
+
 - 克隆仓库
   ```bash
   git clone https://github.com/zqclub/LayerEdge-bot.git
