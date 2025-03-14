@@ -5,7 +5,6 @@ import log from "./tools.js";
 import { newAgent, saveJson, delay } from "./tools.js";
 import { config } from "../config.js";
 
-// CAPTCHA 解决函数（保持不变）
 const solve2Captcha = async (proxy) => {
   let retries = 5;
   try {
@@ -294,11 +293,11 @@ class LayerEdgeConnection {
     if (response && response.data) {
       const isTwitterVerified = response.data.data.isTwitterVerified;
       log.info(`${this.wallet.address} 总积分:`, response.data.data?.nodePoints || 0);
-      log.debug(`Twitter 验证状态:`, isTwitterVerified); // 添加调试日志
+      log.debug(`Twitter 验证状态:`, isTwitterVerified);
       const lasCheckin = response.data.data?.lastClaimed;
       const isNewDate = new Date() - new Date(lasCheckin) > 24 * 60 * 60 * 1000;
       if (isNewDate || !lasCheckin) await this.checkIn();
-      if (!isTwitterVerified) { // 原先条件触发
+      if (!isTwitterVerified) { 
         log.info(`尝试连接 Twitter...`);
         await this.connectTwitter();
       }
