@@ -1,46 +1,20 @@
-# NFT 批量铸造脚本
+- 克隆仓库
+  ```bash
+  git clone https://github.com/zqclub/LayerEdge-mint.git
+  cd LayerEdge-mint
+   ```
 
-这是一个用于在 Base 网络上批量调用智能合约 `mint` 函数的 Node.js 脚本，用于为多个钱包地址铸造 NFT。脚本会读取钱包地址和私钥文件，执行交易，并记录成功的结果。
-
-## 功能
-
-- 调用指定合约的 `mint` 函数进行 NFT 铸造。
-- 输出带时间戳和颜色的日志，便于追踪执行状态。
-- 将成功的交易记录保存到 success.txt 文件，并将失败的交易记录到 failed.txt 文件
 
 ## 依赖安装
 运行脚本前，需要安装以下依赖：
 
 ```bash
-pip install -r requirements.txt
+npm install
 
 ```
-文件准备
-钱包文件
-您可以选择以下两种方式存储钱包信息：
-
-wallets.txt 与 priv.txt（成对使用）：
-
-- wallets.txt：每行填写一个钱包地址。
-- priv.txt：每行填写与钱包地址对应的私钥。
-- 注意： 两个文件的行数必须一致。
-- 或者使用单个文件 private_keys.txt：
-
-每行填写一个私钥，脚本将自动从私钥生成对应的钱包地址。
-格式：每行一个以太坊私钥（64 个十六进制字符，带 0x 前缀）。
-```bash
-0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
-```
-success.txt（可选）：
-脚本会自动创建此文件，用于记录成功的交易。
-
-每行格式：地址:私钥:交易哈希。
-
-如果已存在，会追加内容而非覆盖。
 
 ## 运行脚本
 在命令行中执行以下命令启动脚本：
 ```bash
-python3 bot.py
+node bot.js
 ```
