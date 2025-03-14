@@ -1,7 +1,7 @@
 - 克隆仓库
   ```bash
-  git clone https://github.com/zqclub/LayerEdge-mint.git
-  cd LayerEdge-mint
+  git clone https://github.com/zqclub/LayerEdge-bot.git
+  cd LayerEdge-bot
    ```
 
 
